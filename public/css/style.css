@@ -9,10 +9,8 @@ body {
     background: #0a0a0a;
     color: #00ffff;
     overflow: hidden;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100vw;
+    height: 100vh;
 }
 
 /* CRT Scanlines Effect */
@@ -27,7 +25,7 @@ body {
     background: linear-gradient(
         to bottom,
         rgba(255, 255, 255, 0) 50%,
-        rgba(0, 0, 0, 0.25) 50%
+        rgba(0, 0, 0, 0.12) 50%
     );
     background-size: 100% 4px;
     animation: scanline 8s linear infinite;
@@ -38,172 +36,155 @@ body {
     100% { background-position: 0 4px; }
 }
 
-/* Main Container */
+/* Main Container - fills viewport, no border */
 .game-container {
-    width: 1400px;
-    max-width: 95vw;
-    background: rgba(10, 10, 10, 0.9);
-    border: 4px solid #00ffff;
-    box-shadow: 
-        0 0 20px rgba(0, 255, 255, 0.5),
-        inset 0 0 40px rgba(0, 255, 255, 0.1);
-    padding: 20px;
+    width: 100vw;
+    height: 100vh;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    position: relative;
 }
 
-/* Header */
+/* Header - hidden, title rendered in canvas HUD */
 .game-header {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-.game-title {
-    font-size: 48px;
-    color: #ffff00;
-    text-shadow: 
-        0 0 10px #ffff00,
-        0 0 20px #ffff00,
-        0 0 30px #ff00ff,
-        0 0 40px #ff00ff;
-    letter-spacing: 8px;
-    margin-bottom: 10px;
-    animation: titleGlow 2s ease-in-out infinite alternate;
+    display: none;
 }
 
 @keyframes titleGlow {
     from { 
         text-shadow: 
-            0 0 10px #ffff00,
-            0 0 20px #ffff00,
-            0 0 30px #ff00ff,
-            0 0 40px #ff00ff;
+            0 0 10px #ffff00, 0 0 20px #ffff00,
+            0 0 30px #ff00ff, 0 0 40px #ff00ff;
     }
     to { 
         text-shadow: 
-            0 0 20px #ffff00,
-            0 0 30px #ffff00,
-            0 0 40px #ff00ff,
-            0 0 60px #ff00ff;
+            0 0 20px #ffff00, 0 0 30px #ffff00,
+            0 0 40px #ff00ff, 0 0 60px #ff00ff;
     }
 }
 
-.game-subtitle {
-    font-size: 12px;
-    color: #00ff00;
-    letter-spacing: 4px;
-}
-
-/* Main Game Area */
+/* Main Game Area - column: canvas on top, thoughts at bottom */
 .game-main {
     display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
 }
 
-/* Thought Panels */
-.thought-panel {
-    width: 250px;
+/* Game Stage - fills all available vertical space */
+.game-stage {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0a0a0a;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Subtle vignette on stage edges */
+.game-stage::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: radial-gradient(
+        ellipse at center,
+        transparent 55%,
+        rgba(0, 0, 0, 0.3) 100%
+    );
+    z-index: 1;
+}
+
+#gameCanvas {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+/* Thought Strip: compact horizontal panels at bottom */
+.thought-strip {
+    display: flex;
+    gap: 2%;
+    padding: 4px 1%;
     background: rgba(0, 0, 0, 0.7);
-    border: 3px solid;
-    padding: 15px;
-    font-size: 10px;
-    line-height: 1.6;
+    flex-shrink: 0;
+}
+
+.thought-panel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.85);
+    border: 2px solid;
+    padding: 6px 10px;
+    font-size: 9px;
+    line-height: 1.4;
+    max-height: 52px;
+    overflow: hidden;
 }
 
 .left-panel {
     border-color: #00ffff;
-    box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
 }
 
 .right-panel {
     border-color: #ff00ff;
-    box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
 }
 
-.panel-header {
-    font-size: 14px;
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-.left-panel .panel-header {
-    color: #00ffff;
-}
-
-.right-panel .panel-header {
-    color: #ff00ff;
-}
+.panel-header { display: none; }
 
 .panel-model {
-    font-size: 11px;
-    margin-bottom: 15px;
-    text-align: center;
-    padding: 5px;
-    background: rgba(255, 255, 255, 0.05);
+    font-size: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 2px 6px;
     border: 1px solid currentColor;
+    background: rgba(255, 255, 255, 0.05);
 }
 
-.left-panel .panel-model {
-    color: #00ffff;
-}
+.left-panel .panel-model { color: #00ffff; }
+.right-panel .panel-model { color: #ff00ff; }
 
-.right-panel .panel-model {
-    color: #ff00ff;
-}
-
-.panel-label {
-    font-size: 9px;
-    color: #00ff00;
-    margin-bottom: 8px;
-}
+.panel-label { display: none; }
 
 .panel-thought {
-    height: 350px;
-    overflow-y: auto;
+    flex: 1;
     color: #ffffff;
-    text-align: left;
-}
-
-.panel-thought::-webkit-scrollbar {
-    width: 6px;
-}
-
-.panel-thought::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.5);
-}
-
-.panel-thought::-webkit-scrollbar-thumb {
-    background: #00ff00;
-    box-shadow: 0 0 5px #00ff00;
+    overflow: hidden;
+    min-width: 0;
 }
 
 .panel-thought p {
-    margin-bottom: 10px;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-/* Typewriter / terminal reveal for new thought messages */
 .panel-thought .thought-msg {
     overflow: hidden;
-    white-space: normal;
-    animation: typeReveal 0.6s steps(20, end) forwards;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    animation: thoughtFadeIn 0.3s ease-out forwards;
     opacity: 0;
 }
 
-@keyframes typeReveal {
-    0% {
-        opacity: 0;
-        max-height: 0;
-    }
-    10% {
-        opacity: 1;
-        max-height: 0;
-    }
-    100% {
-        opacity: 1;
-        max-height: 200px;
-    }
+@keyframes thoughtFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-/* Pulsing glow on active player's thought panel */
+/* Pulsing glow on active player thought panel */
 .thought-panel.panel-active {
     animation: panelPulse 1.2s ease-in-out infinite alternate;
 }
@@ -218,145 +199,69 @@ body {
 
 @keyframes panelPulse {
     from {
-        box-shadow: 0 0 15px var(--pulse-color, rgba(0,255,255,0.4));
+        box-shadow: 0 0 10px var(--pulse-color, rgba(0,255,255,0.3));
     }
     to {
         box-shadow: 
-            0 0 25px var(--pulse-color, rgba(0,255,255,0.7)),
-            0 0 50px var(--pulse-color, rgba(0,255,255,0.3)),
-            inset 0 0 15px var(--pulse-color, rgba(0,255,255,0.1));
+            0 0 20px var(--pulse-color, rgba(0,255,255,0.6)),
+            0 0 40px var(--pulse-color, rgba(0,255,255,0.2));
     }
 }
 
-/* ── Thought formatting: color-coded AI analysis classes ── */
-
-.thought-strategy {
-    color: #00ff88;
-    font-weight: bold;
-}
-.thought-personality {
-    color: #888;
-    font-style: italic;
-}
-.thought-health-good {
-    color: #00ff00;
-    font-weight: bold;
-}
-.thought-health-warn {
-    color: #ffff00;
-    font-weight: bold;
-}
-.thought-health-crit {
-    color: #ff3333;
-    font-weight: bold;
-    text-shadow: 0 0 6px rgba(255, 50, 50, 0.6);
-}
-.thought-advantage {
-    color: #00ff88;
-}
-.thought-deficit {
-    color: #ff6666;
-}
-.thought-distance {
-    color: #00ccff;
-}
-.thought-range {
-    color: #aaa;
-}
-.thought-action-name {
-    color: #00ffff;
-    font-weight: bold;
-    text-shadow: 0 0 4px rgba(0, 255, 255, 0.4);
-}
+/* Thought formatting: color-coded AI analysis classes */
+.thought-strategy { color: #00ff88; font-weight: bold; }
+.thought-personality { color: #888; font-style: italic; }
+.thought-health-good { color: #00ff00; font-weight: bold; }
+.thought-health-warn { color: #ffff00; font-weight: bold; }
+.thought-health-crit { color: #ff3333; font-weight: bold; text-shadow: 0 0 6px rgba(255, 50, 50, 0.6); }
+.thought-advantage { color: #00ff88; }
+.thought-deficit { color: #ff6666; }
+.thought-distance { color: #00ccff; }
+.thought-range { color: #aaa; }
+.thought-action-name { color: #00ffff; font-weight: bold; text-shadow: 0 0 4px rgba(0, 255, 255, 0.4); }
 .thought-desperate {
-    color: #ff0044;
-    font-weight: bold;
-    text-transform: uppercase;
+    color: #ff0044; font-weight: bold; text-transform: uppercase;
     text-shadow: 0 0 8px rgba(255, 0, 68, 0.6);
     animation: desperatePulse 0.5s ease-in-out infinite alternate;
 }
-.thought-round-header {
-    color: #ffff00;
-    font-weight: bold;
-    border-bottom: 1px solid rgba(255, 255, 0, 0.3);
-    display: block;
-    padding-bottom: 2px;
-    margin-bottom: 2px;
-}
-.thought-win {
-    color: #00ff88;
-}
-.thought-loss {
-    color: #ff3333;
-}
-.thought-strategy-old {
-    color: #888;
-    text-decoration: line-through;
-}
-.thought-strategy-new {
-    color: #00ff88;
-    font-weight: bold;
-}
+.thought-round-header { color: #ffff00; font-weight: bold; }
+.thought-win { color: #00ff88; }
+.thought-loss { color: #ff3333; }
+.thought-strategy-old { color: #888; text-decoration: line-through; }
+.thought-strategy-new { color: #00ff88; font-weight: bold; }
 
 @keyframes desperatePulse {
     from { opacity: 1; }
     to { opacity: 0.5; }
 }
 
-/* Game Stage */
-.game-stage {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(20, 0, 40, 0.5);
-    border: 3px solid #ffff00;
-    box-shadow: 
-        0 0 20px rgba(255, 255, 0, 0.3),
-        inset 0 0 30px rgba(255, 255, 0, 0.1);
-    position: relative;
-    overflow: hidden;
-}
-
-/* Vignette effect (dark corners) */
-.game-stage::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    background: radial-gradient(
-        ellipse at center,
-        transparent 50%,
-        rgba(0, 0, 0, 0.45) 100%
-    );
-    z-index: 1;
-}
-
-#gameCanvas {
-    display: block;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    position: relative;
-    z-index: 0;
-}
-
-/* Footer Controls */
+/* Footer Controls - overlay, hidden during fights */
 .game-footer {
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
-    gap: 20px;
-    justify-content: center;
+    gap: 12px;
+    z-index: 10;
+    transition: opacity 0.3s ease;
+}
+
+.game-container[data-phase="fighting"] .game-footer,
+.game-container[data-phase="intro"] .game-footer,
+.game-container[data-phase="round_end"] .game-footer,
+.game-container[data-phase="match_end"] .game-footer {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .arcade-btn {
     font-family: 'Press Start 2P', monospace;
-    font-size: 14px;
-    padding: 15px 30px;
-    background: rgba(0, 0, 0, 0.8);
+    font-size: 11px;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.85);
     color: #00ff00;
-    border: 3px solid #00ff00;
+    border: 2px solid #00ff00;
     cursor: pointer;
     transition: all 0.2s;
     text-transform: uppercase;
@@ -369,9 +274,7 @@ body {
     transform: scale(1.05);
 }
 
-.arcade-btn:active:not(:disabled) {
-    transform: scale(0.95);
-}
+.arcade-btn:active:not(:disabled) { transform: scale(0.95); }
 
 .arcade-btn:disabled {
     opacity: 0.3;
@@ -384,123 +287,153 @@ body {
 /* Character Select Overlay */
 .select-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.95);
     z-index: 1000;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px;
+    padding: 20px;
 }
 
 .select-title {
-    font-size: 32px;
+    font-size: 28px;
     color: #ffff00;
     text-shadow: 0 0 20px #ffff00;
-    margin-bottom: 40px;
+    margin-bottom: 16px;
+}
+
+.select-vs-bar {
+    font-size: 14px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: font-size 0.4s ease;
+}
+
+.vs-p1 { color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+.vs-p2 { color: #ff00ff; text-shadow: 0 0 10px #ff00ff; }
+.vs-flash {
+    color: #ffff00;
+    text-shadow: 0 0 15px #ffff00;
+    font-size: 1.3em;
+    animation: vsFlashPulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes vsFlashPulse {
+    from { text-shadow: 0 0 10px #ffff00; }
+    to { text-shadow: 0 0 25px #ffff00, 0 0 50px #ffaa00; }
+}
+
+.select-overlay.vs-reveal .select-grid {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.select-overlay.vs-reveal .select-vs-bar {
+    font-size: 26px;
 }
 
 .select-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 40px;
-    max-width: 1200px;
+    gap: 30px;
+    max-width: 1000px;
+    width: 90%;
+    max-height: 60vh;
+    overflow-y: auto;
+    transition: opacity 0.3s ease;
 }
+
+.select-grid::-webkit-scrollbar { width: 6px; }
+.select-grid::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.5); }
+.select-grid::-webkit-scrollbar-thumb { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
 
 .select-column {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 8px;
 }
 
 .select-column-title {
-    font-size: 18px;
+    font-size: 16px;
     text-align: center;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .select-column:first-child .select-column-title {
-    color: #00ffff;
-    text-shadow: 0 0 10px #00ffff;
+    color: #00ffff; text-shadow: 0 0 10px #00ffff;
 }
-
 .select-column:last-child .select-column-title {
-    color: #ff00ff;
-    text-shadow: 0 0 10px #ff00ff;
+    color: #ff00ff; text-shadow: 0 0 10px #ff00ff;
 }
 
 .model-card {
     font-family: 'Press Start 2P', monospace;
-    font-size: 12px;
-    padding: 20px;
+    font-size: 10px;
+    padding: 12px 16px;
     background: rgba(20, 20, 20, 0.9);
-    border: 3px solid #555;
+    border: 2px solid #555;
     cursor: pointer;
     transition: all 0.2s;
     text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .model-card:hover {
     border-color: #00ff00;
     box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
-    transform: scale(1.05);
+    transform: scale(1.03);
 }
+
+.model-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border: 2px solid currentColor;
+    background: rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+    color: inherit;
+}
+
+.model-name { font-size: 10px; text-align: left; }
 
 .select-column:first-child .model-card.selected {
     border-color: #00ffff;
-    background: rgba(0, 255, 255, 0.2);
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+    background: rgba(0, 255, 255, 0.15);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
 }
 
 .select-column:last-child .model-card.selected {
     border-color: #ff00ff;
-    background: rgba(255, 0, 255, 0.2);
-    box-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+    background: rgba(255, 0, 255, 0.15);
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.6);
 }
 
 /* Responsive */
-@media (max-width: 1400px) {
-    .game-title {
-        font-size: 36px;
-    }
-    
-    .thought-panel {
-        width: 200px;
-        font-size: 8px;
-    }
-    
-    #gameCanvas {
-        max-width: 100%;
-        height: auto;
-    }
+@media (max-width: 768px) {
+    .thought-panel { font-size: 7px; padding: 4px 6px; gap: 4px; }
+    .panel-model { font-size: 6px; padding: 1px 4px; }
+    .select-title { font-size: 20px; }
+    .select-grid { gap: 16px; }
+    .model-card { padding: 8px 10px; font-size: 8px; }
+    .model-icon { width: 28px; height: 28px; font-size: 12px; }
 }
 
-@media (max-width: 900px) {
-    .game-main {
-        flex-direction: column;
-    }
-    
-    .thought-panel {
-        width: 100%;
-        height: 150px;
-    }
-    
-    .panel-thought {
-        height: 80px;
-    }
-}
-
-/* ───────── Victory Screen Overlay ───────── */
+/* Victory Screen Overlay */
 .victory-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.92);
     z-index: 1000;
     display: flex;
@@ -511,10 +444,7 @@ body {
     animation: victoryFadeIn 0.8s ease-out forwards;
 }
 
-@keyframes victoryFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
+@keyframes victoryFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .victory-title {
     font-family: 'Press Start 2P', monospace;

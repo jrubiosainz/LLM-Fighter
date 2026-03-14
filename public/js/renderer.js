@@ -81,6 +81,37 @@ class GameRenderer {
 
         // Track previous states for landing/dodge dust detection
         this.prevStates = { p1: 'idle', p2: 'idle' };
+
+        // Dynamic canvas scaling
+        this.renderScale = 1;
+        this.offsetX = 0;
+        this.offsetY = 0;
+        this.resizeCanvas();
+        this._resizeHandler = () => this.resizeCanvas();
+        window.addEventListener('resize', this._resizeHandler);
+    }
+
+    /**
+     * Dynamically size the canvas to fill its container
+     */
+    resizeCanvas() {
+        const container = this.canvas.parentElement;
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        const dpr = window.devicePixelRatio || 1;
+
+        this.canvas.width = Math.floor(rect.width * dpr);
+        this.canvas.height = Math.floor(rect.height * dpr);
+        this.canvas.style.width = rect.width + 'px';
+        this.canvas.style.height = rect.height + 'px';
+
+        const scaleX = this.canvas.width / this.width;
+        const scaleY = this.canvas.height / this.height;
+        this.renderScale = Math.min(scaleX, scaleY);
+
+        this.offsetX = (this.canvas.width - this.width * this.renderScale) / 2;
+        this.offsetY = (this.canvas.height - this.height * this.renderScale) / 2;
     }
 
     /**
@@ -98,6 +129,23 @@ class GameRenderer {
 
         // --- Process events ---
         this._processEvents(gameState);
+
+        // Phase-aware UI: toggle footer visibility via CSS data attribute
+        const currentPhase = gameState._phase || gameState.phase;
+        const gameContainer = this.canvas.closest('.game-container');
+        if (gameContainer && gameContainer.dataset.phase !== currentPhase) {
+            gameContainer.dataset.phase = currentPhase;
+        }
+
+        // Clear full physical canvas (handles letterbox area)
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Enter logical 800x450 game space, scaled to fill display
+        ctx.save();
+        ctx.translate(this.offsetX, this.offsetY);
+        ctx.scale(this.renderScale, this.renderScale);
 
         // --- Screen shake offset ---
         let shakeX = 0, shakeY = 0;
@@ -199,6 +247,11 @@ class GameRenderer {
         }
 
         ctx.restore();
+
+        // Canvas edge vignette (in logical space, after shake/hitstop restore)
+        this._drawCanvasVignette(ctx);
+
+        ctx.restore(); // exit logical game space
     }
 
     // ───────────────────── EVENT PROCESSING ─────────────────────
@@ -1036,6 +1089,20 @@ class GameRenderer {
         ctx.restore();
     }
 
+    // ───────────────────── CANVAS VIGNETTE ─────────────────────
+    _drawCanvasVignette(ctx) {
+        const w = this.width;
+        const h = this.height;
+        const gradient = ctx.createRadialGradient(
+            w / 2, h / 2, Math.min(w, h) * 0.35,
+            w / 2, h / 2, Math.max(w, h) * 0.75
+        );
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.35)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, w, h);
+    }
+
     // ───────────────────── SUPER METER ─────────────────────
     drawSuperMeter(x, y, meter, side) {
         const ctx = this.ctx;
@@ -1082,6 +1149,18 @@ class GameRenderer {
     // ───────────────────── HUD ─────────────────────
     drawHUD(gameState) {
         const ctx = this.ctx;
+
+        // "LLM FIGHTER" title — small, top-center
+        ctx.save();
+        ctx.fillStyle = '#ffff00';
+        ctx.font = '8px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#ffff00';
+        ctx.shadowBlur = 6;
+        ctx.globalAlpha = 0.7;
+        ctx.fillText('LLM FIGHTER', this.width / 2, 14);
+        ctx.restore();
+
         this.drawHealthBar(50, 30, gameState.players.p1, 'p1');
         this.drawHealthBar(550, 30, gameState.players.p2, 'p2');
 
@@ -1293,6 +1372,12 @@ class GameRenderer {
         title.textContent = 'SELECT YOUR FIGHTERS';
         overlay.appendChild(title);
 
+        // VS display bar
+        const vsBar = document.createElement('div');
+        vsBar.className = 'select-vs-bar';
+        vsBar.innerHTML = '<span class="vs-p1">P1 ???</span> <span class="vs-flash">⚡VS⚡</span> <span class="vs-p2">??? P2</span>';
+        overlay.appendChild(vsBar);
+
         const grid = document.createElement('div');
         grid.className = 'select-grid';
 
@@ -1313,34 +1398,49 @@ class GameRenderer {
         let p1Selected = null;
         let p2Selected = null;
 
+        const updateVsBar = () => {
+            const p1Name = p1Selected || '???';
+            const p2Name = p2Selected || '???';
+            vsBar.innerHTML = `<span class="vs-p1">${p1Name}</span> <span class="vs-flash">⚡VS⚡</span> <span class="vs-p2">${p2Name}</span>`;
+        };
+
+        const tryFinish = () => {
+            if (p1Selected && p2Selected && p1Selected !== p2Selected) {
+                updateVsBar();
+                // Brief VS reveal before closing
+                overlay.classList.add('vs-reveal');
+                setTimeout(() => {
+                    onSelect('p1', p1Selected);
+                    onSelect('p2', p2Selected);
+                    overlay.remove();
+                }, 600);
+            }
+        };
+
         models.forEach(modelId => {
+            const icon = modelId[0].toUpperCase();
+
             const p1Card = document.createElement('div');
             p1Card.className = 'model-card';
-            p1Card.textContent = modelId;
+            p1Card.innerHTML = `<div class="model-icon">${icon}</div><div class="model-name">${modelId}</div>`;
             p1Card.onclick = () => {
                 p1Column.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
                 p1Card.classList.add('selected');
                 p1Selected = modelId;
-                if (p1Selected && p2Selected && p1Selected !== p2Selected) {
-                    onSelect('p1', p1Selected);
-                    onSelect('p2', p2Selected);
-                    overlay.remove();
-                }
+                updateVsBar();
+                tryFinish();
             };
             p1Column.appendChild(p1Card);
 
             const p2Card = document.createElement('div');
             p2Card.className = 'model-card';
-            p2Card.textContent = modelId;
+            p2Card.innerHTML = `<div class="model-icon">${icon}</div><div class="model-name">${modelId}</div>`;
             p2Card.onclick = () => {
                 p2Column.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
                 p2Card.classList.add('selected');
                 p2Selected = modelId;
-                if (p1Selected && p2Selected && p1Selected !== p2Selected) {
-                    onSelect('p1', p1Selected);
-                    onSelect('p2', p2Selected);
-                    overlay.remove();
-                }
+                updateVsBar();
+                tryFinish();
             };
             p2Column.appendChild(p2Card);
         });
@@ -1406,26 +1506,20 @@ class GameRenderer {
     }
 
     updateThought(side, text) {
-        const panel = side === 'left' ? this.leftPanel : this.rightPanel;
-        if (panel) panel.classList.add('panel-active');
+        const panelId = side === 'left' ? 'leftPanel' : 'rightPanel';
+        const thoughtId = side === 'left' ? 'leftThought' : 'rightThought';
+        const otherPanelId = side === 'left' ? 'rightPanel' : 'leftPanel';
 
-        const thoughtDiv = side === 'left' ?
-            document.getElementById('leftThought') :
-            document.getElementById('rightThought');
+        const panel = document.getElementById(panelId);
+        const otherPanel = document.getElementById(otherPanelId);
+        if (panel) panel.classList.add('panel-active');
+        if (otherPanel) otherPanel.classList.remove('panel-active');
+
+        const thoughtDiv = document.getElementById(thoughtId);
         if (!thoughtDiv) return;
 
-        const p = document.createElement('p');
-        p.classList.add('thought-msg');
-        p.textContent = text;
-        thoughtDiv.appendChild(p);
-        thoughtDiv.scrollTop = thoughtDiv.scrollHeight;
-        while (thoughtDiv.children.length > 20) {
-            thoughtDiv.removeChild(thoughtDiv.firstChild);
-        }
-
-        // Remove active glow from the other panel
-        const otherPanel = side === 'left' ? this.rightPanel : this.leftPanel;
-        if (otherPanel) otherPanel.classList.remove('panel-active');
+        // Replace content — show only the latest thought
+        thoughtDiv.innerHTML = `<p class="thought-msg">${text}</p>`;
     }
 }
 

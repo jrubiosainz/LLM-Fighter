@@ -13,35 +13,25 @@
     <div class="scanlines"></div>
     
     <div class="game-container">
-        <header class="game-header">
-            <h1 class="game-title">LLM FIGHTER</h1>
-            <p class="game-subtitle">AI MODELS CLASH</p>
-        </header>
-
         <div class="game-main">
-            <aside class="thought-panel left-panel" id="leftPanel">
-                <div class="panel-header">P1</div>
-                <div class="panel-model" id="leftModel">---</div>
-                <div class="panel-label">THINKING:</div>
-                <div class="panel-thought" id="leftThought">
-                    <p>Awaiting selection...</p>
-                </div>
-            </aside>
-
             <div class="game-stage">
-                <canvas id="gameCanvas" width="800" height="450"></canvas>
+                <canvas id="gameCanvas"></canvas>
             </div>
-
-            <aside class="thought-panel right-panel" id="rightPanel">
-                <div class="panel-header">P2</div>
-                <div class="panel-model" id="rightModel">---</div>
-                <div class="panel-label">THINKING:</div>
-                <div class="panel-thought" id="rightThought">
-                    <p>Awaiting selection...</p>
-                </div>
-            </aside>
+            <div class="thought-strip">
+                <aside class="thought-panel left-panel" id="leftPanel">
+                    <span class="panel-model" id="leftModel">---</span>
+                    <div class="panel-thought" id="leftThought">
+                        <p>Awaiting selection...</p>
+                    </div>
+                </aside>
+                <aside class="thought-panel right-panel" id="rightPanel">
+                    <span class="panel-model" id="rightModel">---</span>
+                    <div class="panel-thought" id="rightThought">
+                        <p>Awaiting selection...</p>
+                    </div>
+                </aside>
+            </div>
         </div>
-
         <footer class="game-footer">
             <button id="selectBtn" class="arcade-btn">SELECT MODELS</button>
             <button id="fightBtn" class="arcade-btn" disabled>FIGHT!</button>

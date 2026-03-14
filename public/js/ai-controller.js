@@ -97,83 +97,30 @@ class AIController {
     if (!rawText) return '';
 
     const lines = rawText.split('\n');
-    const formatted = [];
+    let action = '';
+    let strategy = '';
 
     for (const line of lines) {
-      let html = this.escapeHtml(line);
-
-      // Strategy line: [STRATEGY: ...] in green
-      if (/\[STRATEGY:/.test(line)) {
-        html = html.replace(
-          /\[STRATEGY:\s*([^\]]+)\]/,
-          '<span class="thought-strategy">[🧠 STRATEGY: <strong>$1</strong>]</span>'
-        );
-        // Personality tag
-        html = html.replace(
-          /\(([^)]+)\)\s*$/,
-          '<span class="thought-personality">($1)</span>'
-        );
-      }
-
-      // Health line: color numbers by value
-      if (/📊\s*Health/.test(line)) {
-        html = html.replace(/(\d+)\s*vs\s*(\d+)/, (match, a, b) => {
-          return `${this.colorHealth(parseInt(a))} vs ${this.colorHealth(parseInt(b))}`;
-        });
-        // Advantage/deficit coloring
-        html = html.replace(/(advantage\s*\+\d+)/, '<span class="thought-advantage">$1</span>');
-        html = html.replace(/(deficit\s*-\d+)/, '<span class="thought-deficit">$1</span>');
-        html = '📊 ' + html.replace(/📊\s*/, '');
-      }
-
-      // Distance line
-      if (/📏\s*Distance/.test(line)) {
-        html = html.replace(/(\d+)px/, '<span class="thought-distance">$1px</span>');
-        html = html.replace(/\(([^)]+)\)/, '<span class="thought-range">($1)</span>');
-      }
-
-      // Pattern line
-      if (/🔍\s*Pattern/.test(line)) {
-        html = html.replace(
-          /(repeating\s+)(\w+)/,
-          '$1<span class="thought-action-name">$2</span>'
-        );
-        html = html.replace(
-          /(counter with\s+)(\w+)/,
-          '$1<span class="thought-action-name">$2</span>'
-        );
-        html = html.replace(/DESPERATION/, '<span class="thought-desperate">DESPERATION</span>');
-      }
-
-      // Action line
       if (/🎯\s*Action/.test(line)) {
-        html = html.replace(
-          /(Action:\s*)(\w+)/,
-          '$1<span class="thought-action-name">$2</span>'
-        );
+        const match = line.match(/Action:\s*(\w[\w_]*)/);
+        if (match) action = match[1];
       }
-
-      // Round analysis header
-      if (/📋\s*ROUND/.test(line)) {
-        html = `<span class="thought-round-header">${html}</span>`;
+      if (/\[STRATEGY:/.test(line)) {
+        const match = line.match(/\[STRATEGY:\s*([^\]]+)\]/);
+        if (match) strategy = match[1].trim();
       }
-      // Won/lost
-      if (/Won:/.test(line)) {
-        html = html.replace(/✅/, '<span class="thought-win">✅</span>');
-        html = html.replace(/❌/, '<span class="thought-loss">❌</span>');
-      }
-      // Strategy shift
-      if (/Strategy shift/.test(line)) {
-        html = html.replace(
-          /(\w+)\s*→\s*(\w+)/,
-          '<span class="thought-strategy-old">$1</span> → <span class="thought-strategy-new">$2</span>'
-        );
-      }
-
-      formatted.push(html);
     }
 
-    return formatted.join('<br>');
+    if (action && strategy) {
+      return `🎯 <span class="thought-action-name">${this.escapeHtml(action.toUpperCase())}</span> — <span class="thought-strategy">"${this.escapeHtml(strategy)}"</span>`;
+    }
+    if (action) {
+      return `🎯 <span class="thought-action-name">${this.escapeHtml(action.toUpperCase())}</span>`;
+    }
+
+    // Fallback: first 80 characters as a single line
+    const short = rawText.replace(/\n/g, ' ').substring(0, 80);
+    return this.escapeHtml(short);
   }
 
   colorHealth(hp) {
