@@ -1,22 +1,27 @@
-# 🥊 LLM Fighter
+# 🏟️ LLM Arena
 
-> Street Fighter arcade-style HTML5 game where AI models fight each other in real-time
+> Multi-game AI arena where LLM models compete in Fight, Chess, and Draw challenges
 
 ![HTML5](https://img.shields.io/badge/HTML5-Canvas-orange) ![Node.js](https://img.shields.io/badge/Node.js-Express-green) ![WebSocket](https://img.shields.io/badge/WebSocket-Real--time-blue)
 
 ## What is this?
 
-LLM Fighter is an arcade fighting game where **LLM AI models** (GPT, Claude, Gemini, etc.) battle each other. Each fighter is controlled by an AI agent that decides strategy in real-time — you pick the models and watch them fight.
+LLM Arena is a multi-game platform where **AI models** (GPT, Claude, Gemini, etc.) compete against each other in three different challenges. Pick two models, choose a game mode, and watch them battle!
+
+### 🎮 Game Modes
+
+| Mode | Description |
+|------|-------------|
+| ⚔️ **Fight** | Street Fighter-style arcade fighting — 13 combat actions, super meter, hitstop, combos |
+| ♟️ **Chess** | Isometric 3D chess — AI models play full games with move reasoning displayed in real-time |
+| 🎨 **Draw** | AI art challenge — two models draw on canvases for 5 minutes based on a user prompt |
 
 ### Features
 
-- 🎮 **13 combat actions** — high/low punches & kicks, uppercut, sweep, dodge, crouch, jump, block
-- ⚡ **Super meter** — builds on combat, unleash a devastating super attack at 100%
-- 🧊 **Hitstop** — classic fighting game freeze frames on impact (3/5/8 frames for normal/crit/super)
-- 🤖 **AI personalities** — each model family has unique fighting style and strategy
-- 🎨 **Arcade aesthetic** — CRT scanlines, neon glow, pixel art fighters, cityscape stage
-- 💬 **Live AI thoughts** — watch each model's strategy reasoning in real-time side panels
-- 🏆 **Best of 3 rounds** — with combo system, stagger, critical hits
+- 🤖 **AI personalities** — each model family has unique style per game mode
+- 🎨 **Arcade aesthetic** — CRT scanlines, neon glow, pixel art, Press Start 2P font
+- 💬 **Live AI thoughts** — watch each model's strategy/reasoning in real-time
+- 🔄 **Game selector** — switch between modes instantly from the top-left tab bar
 
 ## Quick Start
 
@@ -32,9 +37,9 @@ npm install
 npm start
 ```
 
-Open **http://localhost:3000** in your browser. Select two AI models and watch them fight!
+Open **http://localhost:3000** in your browser. Use the game selector tabs (top-left) to switch between Fight, Chess, and Draw modes.
 
-> **Note:** The game runs in demo/fallback mode without the Copilot SDK. AI decisions use a built-in strategy engine with model-specific personalities. For full LLM-powered decisions, configure `@github/copilot-sdk`.
+> **Note:** The game runs in demo/fallback mode without the Copilot SDK. AI decisions use built-in strategy engines with model-specific personalities. For full LLM-powered decisions, configure `@github/copilot-sdk`.
 
 ## Tech Stack
 
@@ -42,22 +47,33 @@ Open **http://localhost:3000** in your browser. Select two AI models and watch t
 |-------|------|
 | Frontend | HTML5 Canvas, CSS3, vanilla JavaScript |
 | Server | Node.js, Express, WebSocket (ws) |
-| AI | Strategy engine with model personalities (optional: GitHub Copilot SDK) |
-| Game Engine | Deterministic state machine, frame-based combat |
+| AI | Strategy engines with model personalities (optional: GitHub Copilot SDK) |
+| Game Engine | Deterministic state machines, frame-based combat, chess rules |
 
 ## Architecture
 
 ```
 public/
-├── index.html          # Game shell
-├── css/style.css       # Arcade UI, CRT effects, neon styling
+├── index.html              # Game shell + game selector
+├── css/style.css           # Arcade UI, CRT effects, neon styling
 ├── js/
-│   ├── engine.js       # Pure combat logic (deterministic)
-│   ├── renderer.js     # Canvas rendering, sprites, effects
-│   ├── ai-controller.js # WebSocket client, thought formatting
-│   └── game.js         # Main orchestrator (state machine)
-server.js               # Express + WebSocket server
-ai-agent.js             # AI strategy engine with model personalities
+│   ├── app.js              # Game selector router (Fight/Chess/Draw)
+│   ├── engine.js           # Fight: pure combat logic
+│   ├── renderer.js         # Fight: canvas rendering, sprites, effects
+│   ├── ai-controller.js    # Fight: WebSocket client, thought formatting
+│   ├── game.js             # Fight: main orchestrator
+│   ├── chess/
+│   │   ├── chess-engine.js # Chess rules (FEN, algebraic, check/checkmate)
+│   │   ├── chess-renderer.js # Isometric 3D board rendering
+│   │   └── chess-game.js   # Chess orchestrator
+│   └── draw/
+│       ├── paint-tool.js   # Programmatic paint API (15 commands)
+│       ├── draw-renderer.js # Dual canvas UI, timer, stats
+│       └── draw-game.js    # Draw orchestrator
+server.js                   # Express + multi-game WebSocket routing
+ai-agent.js                 # Fight AI (model personalities)
+chess-agent.js              # Chess AI (move scoring, model styles)
+draw-agent.js               # Draw AI (procedural art, time-phased composition)
 ```
 
 ## Combat System
