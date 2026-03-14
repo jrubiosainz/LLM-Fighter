@@ -112,7 +112,7 @@ body {
 .thought-strip {
     display: flex;
     gap: 2%;
-    padding: 4px 1%;
+    padding: 6px 1%;
     background: rgba(0, 0, 0, 0.7);
     flex-shrink: 0;
 }
@@ -120,14 +120,14 @@ body {
 .thought-panel {
     flex: 1;
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
     background: rgba(0, 0, 0, 0.85);
     border: 2px solid;
-    padding: 6px 10px;
-    font-size: 9px;
-    line-height: 1.4;
-    max-height: 52px;
+    padding: 8px 12px;
+    font-size: 10px;
+    line-height: 1.5;
+    height: 160px;
     overflow: hidden;
 }
 
@@ -144,12 +144,13 @@ body {
 .panel-header { display: none; }
 
 .panel-model {
-    font-size: 8px;
+    font-size: 10px;
     white-space: nowrap;
     flex-shrink: 0;
-    padding: 2px 6px;
+    padding: 3px 8px;
     border: 1px solid currentColor;
     background: rgba(255, 255, 255, 0.05);
+    align-self: flex-start;
 }
 
 .left-panel .panel-model { color: #00ffff; }
@@ -160,21 +161,29 @@ body {
 .panel-thought {
     flex: 1;
     color: #ffffff;
-    overflow: hidden;
-    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    scroll-behavior: smooth;
 }
+
+.panel-thought::-webkit-scrollbar { width: 5px; }
+.panel-thought::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 3px; }
+.panel-thought::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
+.left-panel .panel-thought::-webkit-scrollbar-thumb { background: rgba(0, 255, 255, 0.4); }
+.right-panel .panel-thought::-webkit-scrollbar-thumb { background: rgba(255, 0, 255, 0.4); }
 
 .panel-thought p {
     margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    word-wrap: break-word;
+    white-space: normal;
 }
 
 .panel-thought .thought-msg {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
+    white-space: normal;
     animation: thoughtFadeIn 0.3s ease-out forwards;
     opacity: 0;
 }
@@ -299,10 +308,10 @@ body {
 }
 
 .select-title {
-    font-size: 28px;
+    font-size: 36px;
     color: #ffff00;
     text-shadow: 0 0 20px #ffff00;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .select-vs-bar {
@@ -359,9 +368,9 @@ body {
 }
 
 .select-column-title {
-    font-size: 16px;
+    font-size: 18px;
     text-align: center;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 .select-column:first-child .select-column-title {
@@ -373,8 +382,8 @@ body {
 
 .model-card {
     font-family: 'Press Start 2P', monospace;
-    font-size: 10px;
-    padding: 12px 16px;
+    font-size: 12px;
+    padding: 16px 20px;
     background: rgba(20, 20, 20, 0.9);
     border: 2px solid #555;
     cursor: pointer;
@@ -382,7 +391,7 @@ body {
     text-align: center;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
 }
 
 .model-card:hover {
@@ -392,20 +401,20 @@ body {
 }
 
 .model-icon {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 20px;
     border: 2px solid currentColor;
     background: rgba(255, 255, 255, 0.05);
     flex-shrink: 0;
     color: inherit;
 }
 
-.model-name { font-size: 10px; text-align: left; }
+.model-name { font-size: 12px; text-align: left; }
 
 .select-column:first-child .model-card.selected {
     border-color: #00ffff;
@@ -421,12 +430,12 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
-    .thought-panel { font-size: 7px; padding: 4px 6px; gap: 4px; }
-    .panel-model { font-size: 6px; padding: 1px 4px; }
-    .select-title { font-size: 20px; }
+    .thought-panel { font-size: 8px; padding: 6px 8px; gap: 4px; height: 120px; }
+    .panel-model { font-size: 8px; padding: 2px 6px; }
+    .select-title { font-size: 24px; }
     .select-grid { gap: 16px; }
-    .model-card { padding: 8px 10px; font-size: 8px; }
-    .model-icon { width: 28px; height: 28px; font-size: 12px; }
+    .model-card { padding: 10px 12px; font-size: 10px; }
+    .model-icon { width: 32px; height: 32px; font-size: 14px; }
 }
 
 /* Victory Screen Overlay */

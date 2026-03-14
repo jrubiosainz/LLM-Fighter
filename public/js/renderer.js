@@ -1518,8 +1518,19 @@ class GameRenderer {
         const thoughtDiv = document.getElementById(thoughtId);
         if (!thoughtDiv) return;
 
-        // Replace content — show only the latest thought
-        thoughtDiv.innerHTML = `<p class="thought-msg">${text}</p>`;
+        // Append new thought to history log, auto-scroll to bottom
+        const msgEl = document.createElement('p');
+        msgEl.className = 'thought-msg';
+        msgEl.innerHTML = text;
+        thoughtDiv.appendChild(msgEl);
+
+        // Keep max 50 entries to avoid DOM bloat
+        while (thoughtDiv.children.length > 50) {
+            thoughtDiv.removeChild(thoughtDiv.firstChild);
+        }
+
+        // Auto-scroll to latest thought
+        thoughtDiv.scrollTop = thoughtDiv.scrollHeight;
     }
 }
 
