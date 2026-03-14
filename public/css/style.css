@@ -125,7 +125,7 @@ body {
     background: rgba(0, 0, 0, 0.85);
     border: 2px solid;
     padding: 8px 12px;
-    font-size: 10px;
+    font-size: 13px;
     line-height: 1.5;
     height: 160px;
     overflow: hidden;
@@ -144,7 +144,7 @@ body {
 .panel-header { display: none; }
 
 .panel-model {
-    font-size: 10px;
+    font-size: 13px;
     white-space: nowrap;
     flex-shrink: 0;
     padding: 3px 8px;

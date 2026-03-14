@@ -119,8 +119,8 @@ class DrawRenderer {
 
       .draw-model-label {
         margin-top: 6px;
-        font-size: 9px;
-        padding: 3px 10px;
+        font-size: 14px;
+        padding: 5px 14px;
         border: 1px solid currentColor;
         background: rgba(0, 0, 0, 0.7);
         white-space: nowrap;
@@ -132,20 +132,31 @@ class DrawRenderer {
       .draw-canvas-col.right .draw-model-label { color: #ff00ff; }
 
       .draw-stats {
-        font-size: 8px;
+        font-size: 12px;
         color: #888;
         margin-top: 4px;
       }
 
       .draw-thought {
-        font-size: 7px;
+        font-size: 12px;
         color: #aaa;
         margin-top: 4px;
         max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        min-height: 14px;
+        overflow-y: auto;
+        white-space: normal;
+        word-wrap: break-word;
+        max-height: 80px;
+        min-height: 30px;
+      }
+      .draw-canvas-col.left .draw-thought::-webkit-scrollbar { width: 4px; }
+      .draw-canvas-col.left .draw-thought::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.5); }
+      .draw-canvas-col.left .draw-thought::-webkit-scrollbar-thumb { background: #00ffff; }
+      .draw-canvas-col.right .draw-thought::-webkit-scrollbar { width: 4px; }
+      .draw-canvas-col.right .draw-thought::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.5); }
+      .draw-canvas-col.right .draw-thought::-webkit-scrollbar-thumb { background: #ff00ff; }
+      @keyframes thoughtFadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
 
       /* ── Center column ── */
@@ -162,7 +173,7 @@ class DrawRenderer {
 
       .draw-prompt-input {
         font-family: 'Press Start 2P', monospace;
-        font-size: 9px;
+        font-size: 13px;
         width: 100%;
         padding: 10px 12px;
         background: rgba(0, 0, 0, 0.85);
@@ -222,7 +233,7 @@ class DrawRenderer {
       }
 
       .draw-prompt-display {
-        font-size: 8px;
+        font-size: 13px;
         color: #ff00ff;
         text-align: center;
         max-width: 100%;
@@ -254,7 +265,7 @@ class DrawRenderer {
       }
 
       .draw-select-col-title {
-        font-size: 12px;
+        font-size: 18px;
         text-align: center;
         margin-bottom: 6px;
       }
@@ -263,8 +274,8 @@ class DrawRenderer {
 
       .draw-model-card {
         font-family: 'Press Start 2P', monospace;
-        font-size: 9px;
-        padding: 10px 14px;
+        font-size: 13px;
+        padding: 14px 18px;
         background: rgba(20, 20, 20, 0.9);
         border: 2px solid #555;
         cursor: pointer;
@@ -291,7 +302,7 @@ class DrawRenderer {
       }
 
       .draw-model-list {
-        max-height: 220px;
+        max-height: 280px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
@@ -330,13 +341,13 @@ class DrawRenderer {
       .draw-result-stats {
         display: flex;
         gap: 40px;
-        font-size: 10px;
+        font-size: 14px;
       }
       .draw-result-stat {
         text-align: center;
       }
       .draw-result-stat .stat-label {
-        font-size: 8px;
+        font-size: 12px;
         color: #888;
         margin-bottom: 4px;
       }
@@ -619,7 +630,13 @@ class DrawRenderer {
 
   updateThought(side, text) {
     const el = side === 'left' ? this.leftThoughtEl : this.rightThoughtEl;
-    if (el) el.textContent = text || '';
+    if (!el || !text) return;
+    const msg = document.createElement('p');
+    msg.style.cssText = 'margin: 2px 0; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.1); animation: thoughtFadeIn 0.3s ease-out forwards; opacity: 0;';
+    msg.textContent = text;
+    el.appendChild(msg);
+    while (el.children.length > 30) el.removeChild(el.firstChild);
+    el.scrollTop = el.scrollHeight;
   }
 
   // ── Result screen ──

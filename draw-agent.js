@@ -134,6 +134,17 @@ class DrawAgent {
     this.fallbackMode = !copilotClient;
     this.drawPhase = 'background'; // background, subject, details, finishing
     this.batchIndex = 0;
+    this.seed = side === 'left' ? 12345 : 67890;
+    this.subjectsDrawnCount = 0;
+  }
+
+  _seededRandom() {
+    this.seed = (this.seed * 16807 + 0) % 2147483647;
+    return (this.seed - 1) / 2147483646;
+  }
+
+  _jitter(val, amount) {
+    return val + (this._seededRandom() - 0.5) * amount;
   }
 
   async initialize() {
@@ -294,26 +305,71 @@ Return ONLY a valid JSON array of commands.`;
     const h = canvasHeight;
     const commands = [];
 
-    // Determine current drawing phase
-    const phase = this.updatePhase(timeRemaining);
-
     // Parse prompt for known objects
     const keywords = this.parsePromptKeywords(prompt);
 
-    // Generate commands based on phase
-    if (phase === 'background' && this.batchIndex === 0) {
-      commands.push(...this.drawBackground(w, h, keywords, palette, pers));
+    const bi = this.batchIndex;
+
+    // Progressive drawing based on batchIndex
+    // Batches 0-2: Background
+    if (bi <= 2) {
+      if (bi === 0) {
+        commands.push(...this.drawBackground(w, h, keywords, palette, pers));
+      } else if (bi === 1) {
+        // Additional background texture
+        commands.push(...this.drawBackgroundTexture(w, h, keywords, palette, pers));
+      } else {
+        // Ground detail pass
+        if (keywords.includes('grass') || keywords.includes('tree') || keywords.includes('flower')) {
+          commands.push({ type: 'setColor', color: '#228B22' });
+          commands.push({ type: 'setBrushSize', size: 1 });
+          const skyRatio = this.side === 'left' ? 0.6 : 0.55;
+          const grassY = Math.round(h * skyRatio);
+          const step = Math.round(w * 0.06);
+          const startX = this.side === 'left' ? 0 : Math.round(w * 0.5);
+          const endX = this.side === 'left' ? Math.round(w * 0.5) : w;
+          for (let gx = startX; gx < endX; gx += step) {
+            const x = gx + Math.round(this._jitter(0, w * 0.02));
+            commands.push({ type: 'moveTo', x, y: grassY });
+            commands.push({ type: 'lineTo', x: x - 3, y: grassY - Math.round(this._jitter(8, 6)) });
+          }
+        }
+      }
     }
 
-    if (phase === 'background' || phase === 'subject') {
-      commands.push(...this.drawSubjects(w, h, keywords, palette, pers));
+    // Batches 3-8: Main subjects (add one subject per batch)
+    if (bi >= 3 && bi <= 8) {
+      const subjectIndex = bi - 3;
+      const subjectKeywords = keywords.filter(kw => !['sky', 'grass', 'ocean'].includes(kw));
+      if (subjectIndex < subjectKeywords.length) {
+        commands.push(...this.drawSingleSubject(w, h, subjectKeywords, subjectIndex, palette, pers));
+        this.subjectsDrawnCount++;
+      } else if (subjectIndex === subjectKeywords.length) {
+        // Draw all remaining subjects that didn't get individual batches
+        commands.push(...this.drawSubjects(w, h, keywords, palette, pers));
+      }
     }
 
-    if (phase === 'details' || phase === 'finishing') {
-      commands.push(...this.drawDetails(w, h, keywords, palette, pers));
+    // Batches 9-20: Details (add detail elements incrementally)
+    if (bi >= 9 && bi <= 20) {
+      if (bi === 9) {
+        commands.push(...this.drawDetails(w, h, keywords, palette, pers));
+      } else {
+        commands.push(...this.drawIncrementalDetails(w, h, keywords, palette, pers, bi));
+      }
     }
 
-    if (phase === 'finishing') {
+    // Batches 21+: Refinements
+    if (bi >= 21) {
+      commands.push(...this.drawIncrementalDetails(w, h, keywords, palette, pers, bi));
+      // Every 10 batches add a decorative element
+      if (bi % 10 === 0) {
+        commands.push(...this.drawDecorativeElement(w, h, palette, pers));
+      }
+    }
+
+    // Finishing signature at batch 20
+    if (bi === 20) {
       commands.push(...this.drawFinishing(w, h, palette, pers));
     }
 
@@ -321,7 +377,9 @@ Return ONLY a valid JSON array of commands.`;
     this.batchIndex++;
 
     const progress = Math.min(100, Math.round((this.commandsSent / 500) * 100));
-    const thought = `[STRATEGY: ${pers.name}] Drawing ${keywords.join(', ') || 'scene'} — ${timeRemaining}s remaining, ${progress}% complete`;
+    const sideLabel = this.side === 'left' ? 'L→R' : 'R←L';
+    const phaseLabel = bi <= 2 ? 'background' : bi <= 8 ? 'subjects' : bi <= 20 ? 'details' : 'refinements';
+    const thought = `[${sideLabel} ${pers.name}] ${phaseLabel}: ${keywords.join(', ') || 'scene'} — batch #${bi + 1}, ${timeRemaining}s left, ${progress}%`;
     if (onThought) onThought(thought);
 
     return commands;
@@ -355,21 +413,31 @@ Return ONLY a valid JSON array of commands.`;
 
   drawBackground(w, h, keywords, palette, pers) {
     const cmds = [];
+    // Side-dependent sky/ground proportions
+    const skyRatio = this.side === 'left' ? 0.6 : 0.55;
 
     // Sky
     if (keywords.includes('sky') || keywords.includes('sun') || keywords.includes('cloud') ||
         keywords.includes('star') || keywords.includes('moon') || keywords.includes('mountain') ||
         keywords.includes('rainbow')) {
-      const skyH = Math.round(h * 0.6);
+      const skyH = Math.round(h * skyRatio);
 
       if (pers.detailLevel >= 0.8) {
-        // Gradient sky using stacked rectangles
+        // Gradient sky using stacked rectangles — different tints per side
         const steps = 8;
         for (let i = 0; i < steps; i++) {
           const ratio = i / steps;
-          const r = Math.round(30 + ratio * 60);
-          const g = Math.round(100 + ratio * 50);
-          const b = Math.round(200 + ratio * 40);
+          let r, g, b;
+          if (this.side === 'left') {
+            r = Math.round(30 + ratio * 60);
+            g = Math.round(100 + ratio * 50);
+            b = Math.round(200 + ratio * 40);
+          } else {
+            // Right side: warmer / purple-shifted gradient
+            r = Math.round(45 + ratio * 55);
+            g = Math.round(80 + ratio * 55);
+            b = Math.round(190 + ratio * 50);
+          }
           const color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
           cmds.push({ type: 'setColor', color });
           cmds.push({ type: 'fillRect', x: 0, y: Math.round(i * skyH / steps), width: w, height: Math.round(skyH / steps) + 1 });
@@ -384,13 +452,13 @@ Return ONLY a valid JSON array of commands.`;
     if (keywords.includes('grass') || keywords.includes('tree') || keywords.includes('house') ||
         keywords.includes('flower') || keywords.includes('person')) {
       cmds.push({ type: 'setColor', color: palette.grass });
-      cmds.push({ type: 'fillRect', x: 0, y: Math.round(h * 0.6), width: w, height: Math.round(h * 0.4) });
+      cmds.push({ type: 'fillRect', x: 0, y: Math.round(h * skyRatio), width: w, height: Math.round(h * (1 - skyRatio)) });
 
       // Ground line
       cmds.push({ type: 'setColor', color: palette.ground });
       cmds.push({ type: 'setBrushSize', size: 3 });
-      cmds.push({ type: 'moveTo', x: 0, y: Math.round(h * 0.6) });
-      cmds.push({ type: 'lineTo', x: w, y: Math.round(h * 0.6) });
+      cmds.push({ type: 'moveTo', x: 0, y: Math.round(h * skyRatio) });
+      cmds.push({ type: 'lineTo', x: w, y: Math.round(h * skyRatio) });
     }
 
     // Ocean
@@ -398,12 +466,13 @@ Return ONLY a valid JSON array of commands.`;
       cmds.push({ type: 'setColor', color: palette.water });
       cmds.push({ type: 'fillRect', x: 0, y: Math.round(h * 0.5), width: w, height: Math.round(h * 0.5) });
 
-      // Waves
+      // Waves — side-dependent wave offset
       cmds.push({ type: 'setColor', color: '#FFFFFF' });
       cmds.push({ type: 'setBrushSize', size: 2 });
+      const waveOffset = this.side === 'left' ? 0 : 10;
       for (let waveY = Math.round(h * 0.55); waveY < h; waveY += 30) {
         cmds.push({ type: 'moveTo', x: 0, y: waveY });
-        for (let wx = 0; wx < w; wx += 20) {
+        for (let wx = waveOffset; wx < w; wx += 20) {
           cmds.push({ type: 'lineTo', x: wx + 10, y: waveY - 5 });
           cmds.push({ type: 'lineTo', x: wx + 20, y: waveY });
         }
@@ -415,80 +484,101 @@ Return ONLY a valid JSON array of commands.`;
 
   drawSubjects(w, h, keywords, palette, pers) {
     const cmds = [];
-    let objectX = Math.round(w * 0.15);
+    const skyRatio = this.side === 'left' ? 0.6 : 0.55;
+    // Left: objects flow left-to-right, Right: right-to-left
+    let objectX = this.side === 'left'
+      ? Math.round(w * 0.15)
+      : Math.round(w * 0.85);
+    const step = this.side === 'left'
+      ? Math.round(w * 0.2)
+      : -Math.round(w * 0.2);
+
+    // Right side scales objects differently
+    const sizeMul = this.side === 'left' ? 1.0 : 0.85;
 
     for (const kw of keywords) {
       const x = objectX;
       switch (kw) {
         case 'sun':
-          cmds.push(...this.drawSun(x, Math.round(h * 0.12), Math.round(w * 0.06), palette, pers));
+          cmds.push(...this.drawSun(x, Math.round(h * 0.12), Math.round(w * 0.06 * sizeMul), palette, pers));
           break;
         case 'moon':
-          cmds.push(...this.drawMoon(Math.round(w * 0.8), Math.round(h * 0.1), Math.round(w * 0.05), palette));
+          cmds.push(...this.drawMoon(
+            this.side === 'left' ? Math.round(w * 0.8) : Math.round(w * 0.2),
+            Math.round(h * 0.1), Math.round(w * 0.05 * sizeMul), palette));
           break;
         case 'cloud':
-          cmds.push(...this.drawCloud(x, Math.round(h * 0.15), Math.round(w * 0.08), palette, pers));
+          cmds.push(...this.drawCloud(x, Math.round(h * 0.15), Math.round(w * 0.08 * sizeMul), palette, pers));
           if (pers.detailLevel > 0.5) {
-            cmds.push(...this.drawCloud(x + Math.round(w * 0.3), Math.round(h * 0.1), Math.round(w * 0.06), palette, pers));
+            cmds.push(...this.drawCloud(x + Math.round(w * 0.3 * (this.side === 'left' ? 1 : -1)),
+              Math.round(h * 0.1), Math.round(w * 0.06 * sizeMul), palette, pers));
           }
           break;
         case 'mountain':
-          cmds.push(...this.drawMountain(Math.round(w * 0.3), Math.round(h * 0.6), Math.round(w * 0.4), Math.round(h * 0.35), palette, pers));
+          cmds.push(...this.drawMountain(
+            this.side === 'left' ? Math.round(w * 0.3) : Math.round(w * 0.7),
+            Math.round(h * skyRatio), Math.round(w * 0.4 * sizeMul), Math.round(h * 0.35 * sizeMul), palette, pers));
           if (pers.detailLevel > 0.6) {
-            cmds.push(...this.drawMountain(Math.round(w * 0.6), Math.round(h * 0.6), Math.round(w * 0.3), Math.round(h * 0.25), palette, pers));
+            cmds.push(...this.drawMountain(
+              this.side === 'left' ? Math.round(w * 0.6) : Math.round(w * 0.4),
+              Math.round(h * skyRatio), Math.round(w * 0.3 * sizeMul), Math.round(h * 0.25 * sizeMul), palette, pers));
           }
           break;
         case 'tree':
-          cmds.push(...this.drawTree(x, Math.round(h * 0.6), Math.round(w * 0.04), Math.round(h * 0.25), palette, pers));
+          cmds.push(...this.drawTree(x, Math.round(h * skyRatio), Math.round(w * 0.04 * sizeMul), Math.round(h * 0.25 * sizeMul), palette, pers));
           break;
         case 'house':
-          cmds.push(...this.drawHouse(x, Math.round(h * 0.35), Math.round(w * 0.2), Math.round(h * 0.25), palette, pers));
+          cmds.push(...this.drawHouse(x, Math.round(h * 0.35), Math.round(w * 0.2 * sizeMul), Math.round(h * 0.25 * sizeMul), palette, pers));
           break;
         case 'cat':
-          cmds.push(...this.drawCat(x, Math.round(h * 0.5), Math.round(w * 0.06), palette, pers));
+          cmds.push(...this.drawCat(x, Math.round(h * 0.5), Math.round(w * 0.06 * sizeMul), palette, pers));
           break;
         case 'dog':
-          cmds.push(...this.drawDog(x, Math.round(h * 0.5), Math.round(w * 0.07), palette, pers));
+          cmds.push(...this.drawDog(x, Math.round(h * 0.5), Math.round(w * 0.07 * sizeMul), palette, pers));
           break;
         case 'person':
-          cmds.push(...this.drawPerson(x, Math.round(h * 0.35), Math.round(h * 0.25), palette, pers));
+          cmds.push(...this.drawPerson(x, Math.round(h * 0.35), Math.round(h * 0.25 * sizeMul), palette, pers));
           break;
         case 'flower':
-          cmds.push(...this.drawFlower(x, Math.round(h * 0.55), Math.round(w * 0.025), palette, pers));
+          cmds.push(...this.drawFlower(x, Math.round(h * (skyRatio - 0.05)), Math.round(w * 0.025 * sizeMul), palette, pers));
           if (pers.detailLevel > 0.5) {
-            cmds.push(...this.drawFlower(x + Math.round(w * 0.08), Math.round(h * 0.57), Math.round(w * 0.02), palette, pers));
+            cmds.push(...this.drawFlower(x + Math.round(w * 0.08 * (this.side === 'left' ? 1 : -1)),
+              Math.round(h * (skyRatio - 0.03)), Math.round(w * 0.02 * sizeMul), palette, pers));
           }
           break;
         case 'star':
-          cmds.push(...this.drawStar(x, Math.round(h * 0.08), Math.round(w * 0.02), palette));
-          cmds.push(...this.drawStar(x + Math.round(w * 0.15), Math.round(h * 0.05), Math.round(w * 0.015), palette));
-          cmds.push(...this.drawStar(x + Math.round(w * 0.3), Math.round(h * 0.12), Math.round(w * 0.018), palette));
+          cmds.push(...this.drawStar(x, Math.round(h * 0.08), Math.round(w * 0.02 * sizeMul), palette));
+          cmds.push(...this.drawStar(x + Math.round(w * 0.15 * (this.side === 'left' ? 1 : -1)),
+            Math.round(h * 0.05), Math.round(w * 0.015 * sizeMul), palette));
+          cmds.push(...this.drawStar(x + Math.round(w * 0.3 * (this.side === 'left' ? 1 : -1)),
+            Math.round(h * 0.12), Math.round(w * 0.018 * sizeMul), palette));
           break;
         case 'bird':
-          cmds.push(...this.drawBird(x, Math.round(h * 0.2), Math.round(w * 0.03), palette));
+          cmds.push(...this.drawBird(x, Math.round(h * 0.2), Math.round(w * 0.03 * sizeMul), palette));
           break;
         case 'fish':
-          cmds.push(...this.drawFish(x, Math.round(h * 0.65), Math.round(w * 0.05), palette));
+          cmds.push(...this.drawFish(x, Math.round(h * 0.65), Math.round(w * 0.05 * sizeMul), palette));
           break;
         case 'boat':
-          cmds.push(...this.drawBoat(x, Math.round(h * 0.48), Math.round(w * 0.1), palette));
+          cmds.push(...this.drawBoat(x, Math.round(h * 0.48), Math.round(w * 0.1 * sizeMul), palette));
           break;
         case 'heart':
-          cmds.push(...this.drawHeart(Math.round(w * 0.5), Math.round(h * 0.4), Math.round(w * 0.08), palette));
+          cmds.push(...this.drawHeart(Math.round(w * 0.5), Math.round(h * 0.4), Math.round(w * 0.08 * sizeMul), palette));
           break;
         case 'rainbow':
-          cmds.push(...this.drawRainbow(Math.round(w * 0.5), Math.round(h * 0.4), Math.round(w * 0.35), pers));
+          cmds.push(...this.drawRainbow(Math.round(w * 0.5), Math.round(h * 0.4), Math.round(w * 0.35 * sizeMul), pers));
           break;
         case 'car':
-          cmds.push(...this.drawCar(x, Math.round(h * 0.52), Math.round(w * 0.12), palette));
+          cmds.push(...this.drawCar(x, Math.round(h * 0.52), Math.round(w * 0.12 * sizeMul), palette));
           break;
         // sky, grass, ocean handled in background
         default:
           break;
       }
 
-      objectX += Math.round(w * 0.2);
-      if (objectX > w * 0.85) objectX = Math.round(w * 0.15);
+      objectX += step;
+      if (this.side === 'left' && objectX > w * 0.85) objectX = Math.round(w * 0.15);
+      if (this.side === 'right' && objectX < w * 0.15) objectX = Math.round(w * 0.85);
     }
 
     return cmds;
@@ -496,22 +586,24 @@ Return ONLY a valid JSON array of commands.`;
 
   drawDetails(w, h, keywords, palette, pers) {
     const cmds = [];
+    const skyRatio = this.side === 'left' ? 0.6 : 0.55;
 
     // Add grass detail strokes
     if (keywords.includes('grass') || keywords.includes('tree') || keywords.includes('flower')) {
       cmds.push({ type: 'setColor', color: '#228B22' });
       cmds.push({ type: 'setBrushSize', size: 1 });
-      const grassY = Math.round(h * 0.6);
+      const grassY = Math.round(h * skyRatio);
       for (let gx = 0; gx < w; gx += Math.round(w * 0.03)) {
-        const x = gx + Math.round(jitter(0, w * 0.02));
+        const x = gx + Math.round(this._jitter(0, w * 0.02));
         cmds.push({ type: 'moveTo', x, y: grassY });
-        cmds.push({ type: 'lineTo', x: x - 3, y: grassY - Math.round(jitter(8, 6)) });
+        cmds.push({ type: 'lineTo', x: x - 3, y: grassY - Math.round(this._jitter(8, 6)) });
       }
     }
 
     // Add cloud details
     if (keywords.includes('cloud') && pers.detailLevel > 0.7) {
-      cmds.push(...this.drawCloud(Math.round(w * 0.6), Math.round(h * 0.2), Math.round(w * 0.05), palette, pers));
+      const cloudX = this.side === 'left' ? Math.round(w * 0.6) : Math.round(w * 0.4);
+      cmds.push(...this.drawCloud(cloudX, Math.round(h * 0.2), Math.round(w * 0.05), palette, pers));
     }
 
     // Add small stars in night scenes
@@ -519,8 +611,8 @@ Return ONLY a valid JSON array of commands.`;
       cmds.push({ type: 'setColor', color: '#FFFFFF' });
       cmds.push({ type: 'setBrushSize', size: 2 });
       for (let i = 0; i < 12; i++) {
-        const sx = Math.round(Math.random() * w);
-        const sy = Math.round(Math.random() * h * 0.4);
+        const sx = Math.round(this._seededRandom() * w);
+        const sy = Math.round(this._seededRandom() * h * 0.4);
         cmds.push({ type: 'fillCircle', x: sx, y: sy, radius: 1 });
       }
     }
@@ -534,6 +626,211 @@ Return ONLY a valid JSON array of commands.`;
     // Signature
     cmds.push({ type: 'setColor', color: '#555555' });
     cmds.push({ type: 'text', x: Math.round(w * 0.02), y: Math.round(h * 0.96), text: `AI: ${this.modelId}`, fontSize: 10 });
+
+    return cmds;
+  }
+
+  // Draw a single subject by index (for progressive batch rendering)
+  drawSingleSubject(w, h, subjectKeywords, index, palette, pers) {
+    if (index >= subjectKeywords.length) return [];
+    const kw = subjectKeywords[index];
+    const skyRatio = this.side === 'left' ? 0.6 : 0.55;
+    const sizeMul = this.side === 'left' ? 1.0 : 0.85;
+
+    // Calculate position for this subject
+    const baseX = this.side === 'left' ? 0.15 : 0.85;
+    const stepFrac = this.side === 'left' ? 0.2 : -0.2;
+    let objectX = Math.round(w * (baseX + stepFrac * index));
+    objectX = clamp(objectX, Math.round(w * 0.1), Math.round(w * 0.9));
+
+    const cmds = [];
+    const x = objectX;
+
+    switch (kw) {
+      case 'sun':
+        cmds.push(...this.drawSun(x, Math.round(h * 0.12), Math.round(w * 0.06 * sizeMul), palette, pers));
+        break;
+      case 'moon':
+        cmds.push(...this.drawMoon(
+          this.side === 'left' ? Math.round(w * 0.8) : Math.round(w * 0.2),
+          Math.round(h * 0.1), Math.round(w * 0.05 * sizeMul), palette));
+        break;
+      case 'cloud':
+        cmds.push(...this.drawCloud(x, Math.round(h * 0.15), Math.round(w * 0.08 * sizeMul), palette, pers));
+        break;
+      case 'mountain':
+        cmds.push(...this.drawMountain(x, Math.round(h * skyRatio),
+          Math.round(w * 0.4 * sizeMul), Math.round(h * 0.35 * sizeMul), palette, pers));
+        break;
+      case 'tree':
+        cmds.push(...this.drawTree(x, Math.round(h * skyRatio), Math.round(w * 0.04 * sizeMul), Math.round(h * 0.25 * sizeMul), palette, pers));
+        break;
+      case 'house':
+        cmds.push(...this.drawHouse(x, Math.round(h * 0.35), Math.round(w * 0.2 * sizeMul), Math.round(h * 0.25 * sizeMul), palette, pers));
+        break;
+      case 'cat':
+        cmds.push(...this.drawCat(x, Math.round(h * 0.5), Math.round(w * 0.06 * sizeMul), palette, pers));
+        break;
+      case 'dog':
+        cmds.push(...this.drawDog(x, Math.round(h * 0.5), Math.round(w * 0.07 * sizeMul), palette, pers));
+        break;
+      case 'person':
+        cmds.push(...this.drawPerson(x, Math.round(h * 0.35), Math.round(h * 0.25 * sizeMul), palette, pers));
+        break;
+      case 'flower':
+        cmds.push(...this.drawFlower(x, Math.round(h * (skyRatio - 0.05)), Math.round(w * 0.025 * sizeMul), palette, pers));
+        break;
+      case 'star':
+        cmds.push(...this.drawStar(x, Math.round(h * 0.08), Math.round(w * 0.02 * sizeMul), palette));
+        break;
+      case 'bird':
+        cmds.push(...this.drawBird(x, Math.round(h * 0.2), Math.round(w * 0.03 * sizeMul), palette));
+        break;
+      case 'fish':
+        cmds.push(...this.drawFish(x, Math.round(h * 0.65), Math.round(w * 0.05 * sizeMul), palette));
+        break;
+      case 'boat':
+        cmds.push(...this.drawBoat(x, Math.round(h * 0.48), Math.round(w * 0.1 * sizeMul), palette));
+        break;
+      case 'heart':
+        cmds.push(...this.drawHeart(Math.round(w * 0.5), Math.round(h * 0.4), Math.round(w * 0.08 * sizeMul), palette));
+        break;
+      case 'rainbow':
+        cmds.push(...this.drawRainbow(Math.round(w * 0.5), Math.round(h * 0.4), Math.round(w * 0.35 * sizeMul), pers));
+        break;
+      case 'car':
+        cmds.push(...this.drawCar(x, Math.round(h * 0.52), Math.round(w * 0.12 * sizeMul), palette));
+        break;
+      default:
+        break;
+    }
+    return cmds;
+  }
+
+  // Additional background texture for batch 1
+  drawBackgroundTexture(w, h, keywords, palette, pers) {
+    const cmds = [];
+    const skyRatio = this.side === 'left' ? 0.6 : 0.55;
+
+    if (keywords.includes('grass') || keywords.includes('tree')) {
+      // Subtle ground color variation
+      const groundY = Math.round(h * skyRatio);
+      const patchCount = this.side === 'left' ? 5 : 4;
+      for (let i = 0; i < patchCount; i++) {
+        const px = Math.round(this._seededRandom() * w);
+        const py = groundY + Math.round(this._seededRandom() * h * (1 - skyRatio));
+        const patchW = Math.round(w * 0.1 + this._seededRandom() * w * 0.1);
+        const patchH = Math.round(h * 0.03 + this._seededRandom() * h * 0.04);
+        const shade = this.side === 'left' ? '#3A7A3A' : '#2E6E2E';
+        cmds.push({ type: 'setColor', color: shade });
+        cmds.push({ type: 'fillRect', x: px, y: py, width: patchW, height: patchH });
+      }
+    }
+
+    if (keywords.includes('sky') || keywords.includes('sun')) {
+      // Atmospheric haze near horizon
+      const hazeY = Math.round(h * (skyRatio - 0.05));
+      const hazeColor = this.side === 'left' ? '#B0C4DE40' : '#C8D8E840';
+      cmds.push({ type: 'setColor', color: hazeColor });
+      cmds.push({ type: 'fillRect', x: 0, y: hazeY, width: w, height: Math.round(h * 0.05) });
+    }
+
+    return cmds;
+  }
+
+  // Incremental detail strokes for later batches
+  drawIncrementalDetails(w, h, keywords, palette, pers, batchIndex) {
+    const cmds = [];
+    const skyRatio = this.side === 'left' ? 0.6 : 0.55;
+    const groundY = Math.round(h * skyRatio);
+
+    // Texture strokes on ground area
+    const strokeCount = 3 + Math.round(this._seededRandom() * 4);
+    for (let i = 0; i < strokeCount; i++) {
+      const sx = Math.round(this._seededRandom() * w);
+      const sy = groundY + Math.round(this._seededRandom() * h * (1 - skyRatio));
+      const len = Math.round(5 + this._seededRandom() * 15);
+      const angle = this._seededRandom() * Math.PI;
+      const ex = Math.round(sx + Math.cos(angle) * len);
+      const ey = Math.round(sy + Math.sin(angle) * len);
+
+      const greenShade = Math.round(50 + this._seededRandom() * 100);
+      cmds.push({ type: 'setColor', color: `#22${greenShade.toString(16).padStart(2, '0')}22` });
+      cmds.push({ type: 'setBrushSize', size: 1 });
+      cmds.push({ type: 'moveTo', x: clamp(sx, 0, w), y: clamp(sy, 0, h) });
+      cmds.push({ type: 'lineTo', x: clamp(ex, 0, w), y: clamp(ey, 0, h) });
+    }
+
+    // Occasional sky details (birds, specks)
+    if (batchIndex % 3 === 0) {
+      const bx = Math.round(this._seededRandom() * w);
+      const by = Math.round(this._seededRandom() * groundY * 0.7);
+      const birdSize = Math.round(4 + this._seededRandom() * 8);
+      cmds.push({ type: 'setColor', color: '#444444' });
+      cmds.push({ type: 'setBrushSize', size: 1 });
+      cmds.push({ type: 'moveTo', x: bx - birdSize, y: by + Math.round(birdSize * 0.3) });
+      cmds.push({ type: 'lineTo', x: bx, y: by });
+      cmds.push({ type: 'lineTo', x: bx + birdSize, y: by + Math.round(birdSize * 0.3) });
+    }
+
+    // Shadow/shading strokes under objects
+    if (batchIndex % 4 === 0) {
+      const shadowX = Math.round(this._seededRandom() * w * 0.7 + w * 0.15);
+      cmds.push({ type: 'setColor', color: 'rgba(0,0,0,0.1)' });
+      cmds.push({ type: 'fillRect', x: shadowX, y: groundY - 2, width: Math.round(w * 0.08), height: 4 });
+    }
+
+    return cmds;
+  }
+
+  // Decorative element for every 10th batch in refinement phase
+  drawDecorativeElement(w, h, palette, pers) {
+    const cmds = [];
+    const skyRatio = this.side === 'left' ? 0.6 : 0.55;
+    const choice = Math.round(this._seededRandom() * 4);
+
+    switch (choice) {
+      case 0: {
+        // Small flower
+        const fx = Math.round(this._seededRandom() * w * 0.6 + w * 0.2);
+        const fy = Math.round(h * (skyRatio - 0.02) + this._seededRandom() * h * 0.05);
+        cmds.push(...this.drawFlower(fx, fy, Math.round(w * 0.015), palette, pers));
+        break;
+      }
+      case 1: {
+        // Distant bird
+        const bx = Math.round(this._seededRandom() * w);
+        const by = Math.round(this._seededRandom() * h * 0.3);
+        cmds.push(...this.drawBird(bx, by, Math.round(w * 0.015), palette));
+        break;
+      }
+      case 2: {
+        // Small cloud puff
+        const cx = Math.round(this._seededRandom() * w);
+        const cy = Math.round(h * 0.05 + this._seededRandom() * h * 0.2);
+        cmds.push({ type: 'setColor', color: palette.cloud });
+        cmds.push({ type: 'fillCircle', x: cx, y: cy, radius: Math.round(w * 0.02) });
+        break;
+      }
+      case 3: {
+        // Extra star
+        const sx = Math.round(this._seededRandom() * w);
+        const sy = Math.round(this._seededRandom() * h * 0.3);
+        cmds.push(...this.drawStar(sx, sy, Math.round(w * 0.01), palette));
+        break;
+      }
+      default: {
+        // Ground speckle
+        cmds.push({ type: 'setColor', color: palette.ground });
+        cmds.push({ type: 'setBrushSize', size: 2 });
+        for (let i = 0; i < 5; i++) {
+          const x = Math.round(this._seededRandom() * w);
+          const y = Math.round(h * skyRatio + this._seededRandom() * h * (1 - skyRatio));
+          cmds.push({ type: 'fillCircle', x, y, radius: 2 });
+        }
+        break;
+      }
+    }
 
     return cmds;
   }
