@@ -1,47 +1,87 @@
 // app.js — Game Router / Multi-game shell
-// Manages which game is active and provides the game selector UI
+// Shows a full-screen arcade game selector, then launches the chosen game
 
 class GameApp {
   constructor() {
     this.currentGame = null;
     this.currentGameType = null;
-    this.selectorEl = null;
-    this.createSelector();
-    this.switchGame('fight');
+    this.menuEl = null;
+    this.backBtn = null;
+    this.showMainMenu();
   }
 
-  createSelector() {
-    const nav = document.createElement('nav');
-    nav.className = 'game-selector';
-    nav.innerHTML = `
-      <button class="game-tab fight-tab" data-game="fight">⚔️ FIGHT</button>
-      <button class="game-tab chess-tab" data-game="chess">♟️ CHESS</button>
-      <button class="game-tab draw-tab" data-game="draw">🎨 DRAW</button>
-    `;
-    document.body.appendChild(nav);
-    this.selectorEl = nav;
+  /** Full-screen arcade game selector */
+  showMainMenu() {
+    // Destroy any running game
+    if (this.currentGame && this.currentGame.destroy) {
+      try { this.currentGame.destroy(); } catch (e) { /* ok */ }
+    }
+    this.currentGame = null;
+    this.currentGameType = null;
 
-    nav.querySelectorAll('.game-tab').forEach(btn => {
+    // Remove leftover overlays
+    document.querySelectorAll('.game-overlay, .select-overlay, .victory-overlay, .coming-soon-overlay, .arena-menu').forEach(el => el.remove());
+    if (this.backBtn) { this.backBtn.remove(); this.backBtn = null; }
+
+    // Hide fight-specific UI
+    this.showFightUI(false);
+
+    // Hide canvas while on menu
+    const canvas = document.getElementById('gameCanvas');
+    if (canvas) canvas.style.display = 'none';
+
+    // Build the menu
+    const menu = document.createElement('div');
+    menu.className = 'arena-menu';
+    menu.innerHTML = `
+      <div class="arena-menu-title">LLM ARENA</div>
+      <div class="arena-menu-subtitle">CHOOSE YOUR CHALLENGE</div>
+      <div class="arena-menu-cards">
+        <button class="arena-card fight-card" data-game="fight">
+          <span class="arena-card-icon">⚔️</span>
+          <span class="arena-card-name">FIGHT</span>
+          <span class="arena-card-desc">Street Fighter-style AI combat</span>
+        </button>
+        <button class="arena-card chess-card" data-game="chess">
+          <span class="arena-card-icon">♟️</span>
+          <span class="arena-card-name">CHESS</span>
+          <span class="arena-card-desc">3D isometric chess battle</span>
+        </button>
+        <button class="arena-card draw-card" data-game="draw">
+          <span class="arena-card-icon">🎨</span>
+          <span class="arena-card-name">DRAW</span>
+          <span class="arena-card-desc">AI art duel — paint a prompt</span>
+        </button>
+      </div>
+      <div class="arena-menu-hint">SELECT A MODE TO BEGIN</div>
+    `;
+    document.body.appendChild(menu);
+    this.menuEl = menu;
+
+    menu.querySelectorAll('.arena-card').forEach(btn => {
       btn.addEventListener('click', () => {
         const game = btn.dataset.game;
-        if (game !== this.currentGameType) {
-          this.switchGame(game);
-        }
+        this.launchGame(game);
       });
     });
   }
 
-  switchGame(gameType) {
-    // Destroy current game
-    if (this.currentGame && this.currentGame.destroy) {
-      try { this.currentGame.destroy(); } catch (e) { console.warn('Game destroy error:', e); }
-    }
-    this.currentGame = null;
+  launchGame(gameType) {
+    // Remove menu
+    if (this.menuEl) { this.menuEl.remove(); this.menuEl = null; }
 
-    // Remove any game-specific overlays
-    document.querySelectorAll('.game-overlay, .select-overlay, .victory-overlay, .coming-soon-overlay').forEach(el => el.remove());
+    // Show canvas again
+    const canvas = document.getElementById('gameCanvas');
+    if (canvas) canvas.style.display = '';
 
     this.currentGameType = gameType;
+
+    // Create back button
+    this.backBtn = document.createElement('button');
+    this.backBtn.className = 'arena-back-btn';
+    this.backBtn.textContent = '← MENU';
+    this.backBtn.addEventListener('click', () => this.showMainMenu());
+    document.body.appendChild(this.backBtn);
 
     switch (gameType) {
       case 'fight':
@@ -74,11 +114,8 @@ class GameApp {
         }
         break;
     }
-
-    this.updateTabs(gameType);
   }
 
-  /** Show/hide fight-specific UI elements */
   showFightUI(visible) {
     const fightEls = [
       document.querySelector('.thought-strip'),
@@ -98,13 +135,6 @@ class GameApp {
       <div class="coming-soon-sub">This arena is under construction</div>
     `;
     document.querySelector('.game-stage').appendChild(overlay);
-  }
-
-  updateTabs(active) {
-    if (!this.selectorEl) return;
-    this.selectorEl.querySelectorAll('.game-tab').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.game === active);
-    });
   }
 }
 

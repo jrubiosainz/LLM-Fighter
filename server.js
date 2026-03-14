@@ -25,8 +25,15 @@ const wss = new WebSocket.Server({ server });
 
 const PORT = 3000;
 
-// Serve static files from public directory
-app.use(express.static('public'));
+// Serve static files — no cache during development
+app.use(express.static('public', {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+  }
+}));
 
 // REST endpoint to get available models
 app.get('/api/models', async (req, res) => {

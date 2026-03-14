@@ -531,6 +531,160 @@ body {
     color: #555;
 }
 
+/* ========== Arena Main Menu (full-screen game selector) ========== */
+.arena-menu {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: radial-gradient(ellipse at center, #0a0a2e 0%, #050510 70%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    z-index: 9999;
+}
+
+.arena-menu-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 48px;
+    color: #fff;
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff, 0 0 60px #0088ff;
+    letter-spacing: 8px;
+    animation: menuTitleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes menuTitleGlow {
+    0%   { text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff, 0 0 60px #0088ff; }
+    100% { text-shadow: 0 0 30px #ff00ff, 0 0 50px #ff00ff, 0 0 80px #8800ff; }
+}
+
+.arena-menu-subtitle {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: #888;
+    letter-spacing: 6px;
+    margin-bottom: 10px;
+}
+
+.arena-menu-cards {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.arena-card {
+    width: 220px;
+    height: 260px;
+    background: rgba(10, 10, 40, 0.9);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.arena-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.03) 100%);
+    pointer-events: none;
+}
+
+.arena-card:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.arena-card-icon {
+    font-size: 64px;
+    line-height: 1;
+    filter: drop-shadow(0 0 12px rgba(255,255,255,0.3));
+}
+
+.arena-card-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 18px;
+    color: #fff;
+    letter-spacing: 4px;
+}
+
+.arena-card-desc {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: #666;
+    text-align: center;
+    padding: 0 12px;
+    line-height: 1.6;
+}
+
+/* Card hover accents per game */
+.fight-card:hover {
+    border-color: #00ffff;
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.3), 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.fight-card:hover .arena-card-name { color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+.fight-card:hover .arena-card-icon { filter: drop-shadow(0 0 20px #00ffff); }
+
+.chess-card:hover {
+    border-color: #ffd700;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3), 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.chess-card:hover .arena-card-name { color: #ffd700; text-shadow: 0 0 10px #ffd700; }
+.chess-card:hover .arena-card-icon { filter: drop-shadow(0 0 20px #ffd700); }
+
+.draw-card:hover {
+    border-color: #ff00ff;
+    box-shadow: 0 0 30px rgba(255, 0, 255, 0.3), 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.draw-card:hover .arena-card-name { color: #ff00ff; text-shadow: 0 0 10px #ff00ff; }
+.draw-card:hover .arena-card-icon { filter: drop-shadow(0 0 20px #ff00ff); }
+
+.arena-menu-hint {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #444;
+    letter-spacing: 3px;
+    animation: hintBlink 1.5s ease-in-out infinite;
+}
+
+@keyframes hintBlink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.3; }
+}
+
+/* Back to menu button */
+.arena-back-btn {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 10001;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 8px 14px;
+    background: rgba(5, 5, 15, 0.9);
+    color: #888;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.arena-back-btn:hover {
+    color: #fff;
+    border-color: #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
 @keyframes comingSoonPulse {
     from { transform: scale(1); filter: brightness(1); }
     to { transform: scale(1.03); filter: brightness(1.2); }
