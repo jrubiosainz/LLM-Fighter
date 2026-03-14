@@ -26,3 +26,13 @@
 - **Verified action request format**: Thought streaming working; AI responses parsed and validated before returning to game
 - **Tested parallel query performance**: Promise.all AI calls complete in <300ms; no timeout errors logged
 - **Confirmed round adaptation**: Strategy adjustments transmitted and logged for debugging; agents receive round results
+
+### 2026-03-15: AI Strategy Engine V2 — Model Personalities & Rich Thoughts
+- **Model Personality System**: 7 profiles mapped by model ID substring — GPT (Analytical), Claude Haiku (Speed Blitz), Claude Sonnet (Adaptive), Claude Opus (Methodical), Gemini (Wildcard), o3-mini (Deep Thinker), default (Balanced). Each has aggressionBase, riskTolerance, patternWeight, and preferredMoves.
+- **Pattern Recognition**: Tracks last 20 opponent actions, detects repeating moves (≥3 of 5 window), uses COUNTERS map for automatic counter-picks. Haiku pattern weight is low (0.4) for aggression; Opus/o3 pattern weight is high (0.9/0.95) for reading opponents.
+- **Situational Awareness**: Dynamic aggression adjusts based on health differential (±0.15-0.2), round advantage (±0.1-0.15), and desperation mode (<15 HP overrides everything). Round-level adaptation shifts strategy with personality-aware logic.
+- **Weighted Action Selection**: Actions scored by range bracket × aggression modifier × personality preferred moves bonus (1.3×). Gemini gets jump as closing move; o3 has 8% chance of deliberation-pause idle.
+- **5 New Moves**: dodge, crouch, jump, uppercut (18 dmg), sweep (14 dmg) — added to VALID_ACTIONS, ACTION_STATS, and COUNTERS map. Engine already had support (Tank).
+- **Rich Structured Thoughts**: Multi-line format with [STRATEGY], 📊 Health, 📏 Distance, 🔍 Pattern, 🎯 Action sections. Round adaptation outputs 📋 ROUND ANALYSIS with win/loss, strategy shift, opponent pattern insights.
+- **Client Thought Formatting**: AIController.formatThought() parses structured text into color-coded HTML spans. Health green/yellow/red by value, actions in cyan, strategy in green, desperation in pulsing red. CSS classes added to style.css.
+- **Prompt Engineering V2**: Updated buildPrompt with all 13 moves, health bar labels, opponent pattern history, combo/stagger state, range guide, and structured reasoning instructions.
