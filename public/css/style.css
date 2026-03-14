@@ -431,6 +431,8 @@ body {
 
 /* Victory Screen Overlay */
 .victory-overlay {
+    /* styles applied dynamically by renderer */
+}
 
 /* ========== Game Selector (LLM Arena multi-game tabs) ========== */
 .game-selector {
