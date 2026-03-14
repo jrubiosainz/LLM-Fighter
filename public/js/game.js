@@ -265,8 +265,4 @@ class Game {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  const game = new Game();
-  game.init();
-  window.addEventListener('beforeunload', () => game.destroy());
-});
+// Lifecycle managed by GameApp (app.js)

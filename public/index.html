@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM FIGHTER</title>
+    <title>LLM ARENA</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -38,9 +38,23 @@
         </footer>
     </div>
 
+    <!-- Fight game (existing) -->
     <script src="js/engine.js"></script>
     <script src="js/renderer.js"></script>
     <script src="js/ai-controller.js"></script>
     <script src="js/game.js"></script>
+
+    <!-- Chess game -->
+    <script src="js/chess/chess-engine.js" onerror=""></script>
+    <script src="js/chess/chess-renderer.js" onerror=""></script>
+    <script src="js/chess/chess-game.js" onerror=""></script>
+
+    <!-- Draw game -->
+    <script src="js/draw/paint-tool.js" onerror=""></script>
+    <script src="js/draw/draw-renderer.js" onerror=""></script>
+    <script src="js/draw/draw-game.js" onerror=""></script>
+
+    <!-- Game Router (must load last) -->
+    <script src="js/app.js"></script>
 </body>
 </html>

@@ -53,3 +53,16 @@
 - Replaced `confirm()` dialog in `endMatch()` with `renderer.showVictoryScreen()` call (with typeof guard for backward compat until Trinity ships it)
 - ai-agent.js updated: super_attack in VALID_ACTIONS, ACTION_STATS, COUNTERS, prompt context, and fallback strategy (fires at full meter in range, or desperation)
 - Key files: `public/js/engine.js`, `public/js/game.js`, `ai-agent.js`
+
+### 2026-03-15: Chess Rules Engine — Complete Implementation
+- Created `public/js/chess/chess-engine.js` as pure logic layer with zero rendering/DOM/AI dependencies
+- Board is 8×8 array; board[0][0]=a8, board[7][7]=h1; cells are `null` or `{type, color}` objects
+- Full legal move generation with pin detection, check filtering, and all special rules
+- Special rules implemented: en passant (including pin-through-EP edge case), castling (both sides, both colors, with through-check and empty-square validation), pawn promotion (default queen), 50-move draw rule
+- Attack detection uses direct piece-pattern scanning (not move generation) to avoid infinite recursion between `_isSquareAttacked` and `getValidMoves`
+- `_moveLeavesKingInCheck` temporarily applies the move on the real board and restores after — no board cloning overhead, just array slicing
+- FEN import/export for AI integration — `toFEN()` for sending state to LLMs, `fromFEN()` for loading positions
+- Algebraic notation: full parse (`parseAlgebraic`) and generation (`toAlgebraic`) with disambiguation (file, rank, or both), capture markers, check/checkmate suffixes, castling (O-O/O-O-O), promotion (=Q/=R/=B/=N)
+- `getState()` returns deep copy of all engine state — safe for external consumers
+- Validated with 42 automated tests covering: initial position, move generation, Scholar's mate, castling, en passant, pin detection, stalemate, FEN round-trip, promotion variants, half-move clock, check detection
+- Key file: `public/js/chess/chess-engine.js`

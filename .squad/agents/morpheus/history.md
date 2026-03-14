@@ -23,3 +23,12 @@
 - **Fixed phase transitions**: Ensured intro → fighting → round_end → match_end flow fires consistently with proper timing
 - **Module initialization verified**: All window globals (GameEngine, GameRenderer, AIController) properly set before game start
 - **State synchronization complete**: gameState object authoritative across all modules; no duplicate state updates
+
+### 2026-03-15: Multi-Game Architecture Shell
+- **Created GameApp router** (app.js) — manages game lifecycle switching between Fight, Chess, Draw modes
+- **Key design**: Games must expose `init()` and `destroy()` lifecycle methods; GameApp handles creation/teardown
+- **Game selector UI**: Fixed-position `<nav>` with arcade-styled tabs; unobtrusive but always accessible at z-index 10000
+- **Backward compatibility preserved**: Fight game auto-start removed from game.js; GameApp now owns DOMContentLoaded boot
+- **Server routing**: WebSocket messages now dispatch on `data.game` field (default: 'fight'), with graceful require() fallback for chess-agent.js and draw-agent.js
+- **Placeholder pattern**: Empty JS files prevent 404s; `window.ChessGame`/`window.DrawGame` checks gate initialization; "Coming Soon" overlay shown for unimplemented games
+- **Surgical change to game.js**: Only the DOMContentLoaded listener was removed — all game logic untouched
