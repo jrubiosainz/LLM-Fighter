@@ -265,4 +265,5 @@ class Game {
   }
 }
 
+window.Game = Game;
 // Lifecycle managed by GameApp (app.js)
