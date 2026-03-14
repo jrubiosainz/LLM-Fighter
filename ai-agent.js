@@ -11,7 +11,8 @@ const FALLBACK_MODELS = [
 const VALID_ACTIONS = [
   'high_punch', 'low_punch', 'high_kick', 'low_kick',
   'block', 'move_forward', 'move_back', 'idle',
-  'dodge', 'crouch', 'jump', 'uppercut', 'sweep'
+  'dodge', 'crouch', 'jump', 'uppercut', 'sweep',
+  'super_attack'
 ];
 
 const ACTION_STATS = {
@@ -27,7 +28,8 @@ const ACTION_STATS = {
   crouch: { damage: 0, range: 0, speed: 'instant' },
   jump: { damage: 0, range: 0, speed: 'medium' },
   uppercut: { damage: 18, range: 70, speed: 'slow' },
-  sweep: { damage: 14, range: 95, speed: 'medium' }
+  sweep: { damage: 14, range: 95, speed: 'medium' },
+  super_attack: { damage: 30, range: 100, speed: 'very_slow' }
 };
 
 // Counter map: what counters what
@@ -42,7 +44,8 @@ const COUNTERS = {
   block: ['sweep', 'low_kick'],
   crouch: ['uppercut', 'low_kick'],
   jump: ['high_kick', 'high_punch'],
-  dodge: ['sweep', 'low_kick']
+  dodge: ['sweep', 'low_kick'],
+  super_attack: ['dodge']
 };
 
 // Model personality profiles
@@ -263,6 +266,8 @@ class FighterAgent {
     const comboCount = player.comboCount || 0;
     const isStaggered = player.isStaggered || false;
     const oppStaggered = opponent.isStaggered || false;
+    const superMeter = player.superMeter || 0;
+    const oppSuperMeter = opponent.superMeter || 0;
     const recentOpp = this.opponentHistory.slice(-5).join(', ') || 'none yet';
 
     return `You are a fighter in a Street Fighter-style combat game. Player ${this.side.toUpperCase()}.
@@ -278,6 +283,7 @@ GAME STATE:
 - Your last action: ${lastAction} | Opponent last: ${oppLastAction}
 - Opponent recent pattern: [${recentOpp}]
 - Combo count: ${comboCount} | Staggered: ${isStaggered} | Opp staggered: ${oppStaggered}
+- Super meter: ${superMeter}/100 ${superMeter >= 100 ? '⚡ READY!' : ''} | Opp super: ${oppSuperMeter}/100
 - Current strategy: ${this.strategy}
 
 AVAILABLE MOVES (choose exactly one):
@@ -287,6 +293,7 @@ AVAILABLE MOVES (choose exactly one):
   low_kick    — 10 dmg, 90px range, medium
   uppercut    — 18 dmg, 70px range, slow (high risk/reward)
   sweep       — 14 dmg, 95px range, medium (trips opponent)
+  super_attack — 30 dmg, 100px range, very slow (REQUIRES super meter = 100; ignores blocking; always staggers)
   block       — reduces incoming damage 75%
   dodge       — evade attack, fast
   crouch      — duck under high attacks
@@ -414,9 +421,17 @@ Fight smart!`;
     }
 
     // --- Situational overrides ---
+    // Super attack: if meter is full, high priority
+    if (player.superMeter >= 100 && distance <= 100) {
+      options.push({ action: 'super_attack', weight: 8 * aggression });
+    }
+
     // Desperation mode: all-in high-risk moves
     if (player.health <= 15) {
       options.length = 0;
+      if (player.superMeter >= 100) {
+        options.push({ action: 'super_attack', weight: 10 });
+      }
       options.push({ action: 'uppercut', weight: 5 });
       options.push({ action: 'high_kick', weight: 3 });
       options.push({ action: 'sweep', weight: 3 });

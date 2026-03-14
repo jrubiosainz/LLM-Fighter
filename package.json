@@ -1,0 +1,20 @@
+{
+  "name": "llm-fighter",
+  "version": "1.0.0",
+  "description": "HTML5 Street Fighter arcade game where LLM AI models fight each other",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["game", "ai", "llm", "copilot", "fighting"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
+  },
+  "optionalDependencies": {
+    "@github/copilot-sdk": "*"
+  }
+}
