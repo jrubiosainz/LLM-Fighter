@@ -493,3 +493,63 @@ body {
         height: 80px;
     }
 }
+
+/* ───────── Victory Screen Overlay ───────── */
+.victory-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.92);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    animation: victoryFadeIn 0.8s ease-out forwards;
+}
+
+@keyframes victoryFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.victory-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 56px;
+    letter-spacing: 12px;
+    animation: victoryPulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes victoryPulse {
+    from { transform: scale(1); filter: brightness(1); }
+    to { transform: scale(1.05); filter: brightness(1.3); }
+}
+
+.victory-model {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 24px;
+    letter-spacing: 4px;
+}
+
+.victory-score {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 32px;
+    color: #ffff00;
+    text-shadow: 0 0 10px #ffff00;
+    letter-spacing: 8px;
+}
+
+.victory-rematch {
+    margin-top: 20px;
+    font-size: 18px;
+    padding: 20px 50px;
+    animation: rematchBlink 1s ease-in-out infinite alternate;
+}
+
+@keyframes rematchBlink {
+    from { box-shadow: 0 0 10px rgba(0, 255, 0, 0.3); }
+    to { box-shadow: 0 0 25px rgba(0, 255, 0, 0.8), 0 0 50px rgba(0, 255, 0, 0.3); }
+}
